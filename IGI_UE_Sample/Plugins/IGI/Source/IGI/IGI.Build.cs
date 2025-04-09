@@ -37,6 +37,8 @@ public class IGI : ModuleRules
 			new string[] {
                 Path.Combine(EngineDirectory,"Source/Runtime/D3D12RHI/Private"),
                 Path.Combine(EngineDirectory,"Source/Runtime/D3D12RHI/Public/Windows"),
+                Path.Combine(EngineDirectory,"Source/Runtime/VulkanRHI/Private"),
+                Path.Combine(EngineDirectory,"Source/Runtime/VulkanRHI/Public"),
             }
 			);
 			
@@ -58,7 +60,8 @@ public class IGI : ModuleRules
                 "Engine",
                 "Projects",
 				"RHI",
-                "D3D12RHI"
+				"D3D12RHI",
+				"VulkanRHI"
             }
 			);
 		
@@ -91,5 +94,6 @@ public class IGI : ModuleRules
         RuntimeDependencies.Add(Path.Combine(GPTModelPath, "nvigi.model.config.json"));
 
         AddEngineThirdPartyPrivateStaticDependencies(Target, "DX12");
+        AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
     }
 }
