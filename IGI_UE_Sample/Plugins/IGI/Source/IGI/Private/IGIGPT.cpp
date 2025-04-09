@@ -5,21 +5,10 @@
 #include "IGIGPT.h"
 
 #include "CoreMinimal.h"
-#include "ID3D12DynamicRHI.h"
+#include "IGIPlatformRHI.h"
+#include "IGIMinimal.h"
 
-#include "IGIModule.h"
-#include "IGILog.h"
-
-#include "nvigi.h"
-#include "nvigi_ai.h"
 #include "nvigi_gpt.h"
-#include "nvigi_stl_helpers.h"
-#include "nvigi_struct.h"
-
-#pragma warning( push )
-#pragma warning( disable : 5257 )
-#include "nvigi_d3d12.h"
-#pragma warning( pop )
 
 #include <condition_variable>
 #include <thread>
@@ -58,46 +47,18 @@ public:
             UE_LOG(LogIGISDK, Error, TEXT("Unable to chain common parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
             GPTInstance = nullptr;
         }
-
-        nvigi::D3D12Parameters d3d12Params{};
-        if (GDynamicRHI &&
-            GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
+        
+        if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
         {
-            ID3D12DynamicRHI* RHI = static_cast<ID3D12DynamicRHI*>(GDynamicRHI);
-            if (RHI)
-            {
-                ID3D12CommandQueue* CmdQ = RHI->RHIGetCommandQueue();
-                constexpr uint32 RHI_DEVICE_INDEX = 0u;
-                ID3D12Device* D3D12Device = RHI->RHIGetDevice(RHI_DEVICE_INDEX);
-
-                if (CmdQ && D3D12Device)
-                {
-                    d3d12Params.device = D3D12Device;
-                    d3d12Params.queue = CmdQ;
-
-                    Result = params.chain(d3d12Params);
-                    if (Result != nvigi::kResultOk)
-                    {
-                        UE_LOG(LogIGISDK, Error, TEXT("Unable to chain D3D12 parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
-                        GPTInstance = nullptr;
-                    }
-                }
-                else
-                {
-                    UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve D3D12 device and command queue from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
-                    GPTInstance = nullptr;
-                }
-            }
-            else
-            {
-                UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
-                GPTInstance = nullptr;
-            }
+            nvigi::D3D12Parameters d3d12Params{};
+            IGIModule->GetD3D12Parameters(d3d12Params, Result);
+            Result = params.chain(d3d12Params);
         }
-        else
+        else if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
         {
-            UE_LOG(LogIGISDK, Log, TEXT("UE not using D3D12; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            GPTInstance = nullptr;
+            nvigi::VulkanParameters vulkanParams{};
+            IGIModule->GetVulkanParameters(vulkanParams, Result);
+            Result = params.chain(vulkanParams);
         }
 
         Result = GPTInterface->createInstance(params, &GPTInstance);

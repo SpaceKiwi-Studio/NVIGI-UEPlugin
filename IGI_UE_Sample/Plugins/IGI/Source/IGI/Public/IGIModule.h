@@ -4,6 +4,7 @@
 
 #include "Modules/ModuleManager.h"
 #include "Templates/PimplPtr.h"
+#include "IGIPlatformRHI.h"
 
 class FIGIGPT;
 
@@ -35,6 +36,12 @@ public:
     nvigi::Result LoadIGIFeature(const nvigi::PluginID& Feature, nvigi::InferenceInterface** Interface, const UTF8CHAR* UTF8PathToPlugin = nullptr);
     nvigi::Result UnloadIGIFeature(const nvigi::PluginID& Feature, nvigi::InferenceInterface* Interface);
 
+    /** Get the D3D12 parameters */
+    bool GetD3D12Parameters(nvigi::D3D12Parameters& Parameters, nvigi::Result Result) const;
+
+    /** Get the Vulkan parameters */
+    bool GetVulkanParameters(nvigi::VulkanParameters& Parameters, nvigi::Result Result) const;
+
     const FString GetModelsPath() const;
 
     FIGIGPT* GetGPT();
@@ -45,6 +52,3 @@ private:
     class Impl;
     TPimplPtr<Impl> Pimpl;
 };
-
-// Convert nvigi::Result to a readable message
-IGI_API FString GetIGIStatusString(nvigi::Result Result);

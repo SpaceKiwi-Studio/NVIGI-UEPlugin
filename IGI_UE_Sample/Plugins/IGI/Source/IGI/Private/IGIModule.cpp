@@ -15,7 +15,6 @@
 
 #include "nvigi.h"
 #include "nvigi_ai.h"
-#include "nvigi_gpt.h"
 
 #define LOCTEXT_NAMESPACE "FIGIModule"
 
@@ -75,6 +74,83 @@ public:
         FScopeLock Lock(&CS);
 
         return Core->UnloadInterface(Feature, Interface);
+    }
+
+    // Get the D3D12 parameters
+    bool GetD3D12Parameters(nvigi::D3D12Parameters& Parameters, nvigi::Result Result) const
+    {
+        if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
+        {
+            UE_LOG(LogIGISDK, Log, TEXT("UE not using D3D12; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        ID3D12DynamicRHI* RHI = static_cast<ID3D12DynamicRHI*>(GDynamicRHI);
+
+        if (!RHI)
+        {
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        ID3D12CommandQueue* CmdQ = RHI->RHIGetCommandQueue();
+        constexpr uint32 RHI_DEVICE_INDEX = 0u;
+        ID3D12Device* D3D12Device = RHI->RHIGetDevice(RHI_DEVICE_INDEX);
+
+        if (!CmdQ && !D3D12Device)
+        {
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve D3D12 device and command queue from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        Parameters.device = D3D12Device;
+        Parameters.queue = CmdQ;
+
+        if (Result != nvigi::kResultOk)
+        {
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to chain D3D12 parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        return true;
+    }
+
+    // Get the Vulkan parameters
+    bool GetVulkanParameters(nvigi::VulkanParameters& Parameters, nvigi::Result Result) const
+    {
+        if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
+        {
+            UE_LOG(LogIGISDK, Log, TEXT("UE not using VULKAN; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        IVulkanDynamicRHI* RHI = static_cast<IVulkanDynamicRHI*>(GDynamicRHI);
+
+        if (!RHI)
+        {
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        VkQueue VkQ = RHI->RHIGetGraphicsVkQueue();
+        VkDevice VkDevice = RHI->RHIGetVkDevice();
+
+        if (!VkQ && !VkDevice)
+        {
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve VULKAN device and command queue from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        Parameters.device = VkDevice;
+        Parameters.queue = VkQ;
+
+        if (Result != nvigi::kResultOk)
+        {
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to chain VULKAN parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
+            return false;
+        }
+
+        return true;
     }
 
     const FString GetModelsPath() const { return IGIModelsPath; }
@@ -170,6 +246,16 @@ nvigi::Result FIGIModule::UnloadIGIFeature(const nvigi::PluginID& Feature, nvigi
     return Result;
 }
 
+bool FIGIModule::GetD3D12Parameters(nvigi::D3D12Parameters& Parameters, nvigi::Result Result) const
+{
+    return Pimpl->GetD3D12Parameters(Parameters, Result);
+}
+
+bool FIGIModule::GetVulkanParameters(nvigi::VulkanParameters& Parameters, nvigi::Result Result) const
+{
+    return Pimpl->GetVulkanParameters(Parameters, Result);
+}
+
 const FString FIGIModule::GetModelsPath() const
 {
     return Pimpl->GetModelsPath();
@@ -178,49 +264,6 @@ const FString FIGIModule::GetModelsPath() const
 FIGIGPT* FIGIModule::GetGPT()
 {
     return Pimpl->GetGPT(this);
-}
-
-FString GetIGIStatusString(nvigi::Result Result)
-{
-    switch (Result)
-    {
-    case nvigi::kResultOk:
-        return FString(TEXT("Success"));
-    case nvigi::kResultDriverOutOfDate:
-        return FString(TEXT("Driver out of date"));
-    case nvigi::kResultOSOutOfDate:
-        return FString(TEXT("OS out of date"));
-    case nvigi::kResultNoPluginsFound:
-        return FString(TEXT("No plugins found"));
-    case nvigi::kResultInvalidParameter:
-        return FString(TEXT("Invalid parameter"));
-    case nvigi::kResultNoSupportedHardwareFound:
-        return FString(TEXT("No supported hardware found"));
-    case nvigi::kResultMissingInterface:
-        return FString(TEXT("Missing interface"));
-    case nvigi::kResultMissingDynamicLibraryDependency:
-        return FString(TEXT("Missing dynamic library dependency"));
-    case nvigi::kResultInvalidState:
-        return FString(TEXT("Invalid state"));
-    case nvigi::kResultException:
-        return FString(TEXT("Exception"));
-    case nvigi::kResultJSONException:
-        return FString(TEXT("JSON exception"));
-    case nvigi::kResultRPCError:
-        return FString(TEXT("RPC error"));
-    case nvigi::kResultInsufficientResources:
-        return FString(TEXT("Insufficient resources"));
-    case nvigi::kResultNotReady:
-        return FString(TEXT("Not ready"));
-    case nvigi::kResultPluginOutOfDate:
-        return FString(TEXT("Plugin out of date"));
-    case nvigi::kResultDuplicatedPluginId:
-        return FString(TEXT("Duplicate plugin ID"));
-    case nvigi::kResultNoImplementation:
-        return FString(TEXT("No implementation"));
-    default:
-        return FString(TEXT("invalid IGI error code"));
-    }
 }
 
 #undef LOCTEXT_NAMESPACE
