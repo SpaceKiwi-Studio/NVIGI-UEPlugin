@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using System.IO;
-using System.Security.Claims;
 using UnrealBuildTool;
 
 public class IGI : ModuleRules
@@ -31,22 +30,14 @@ public class IGI : ModuleRules
 				// ... add public include paths required here ...
 			}
 			);
-				
-		
-		PrivateIncludePaths.AddRange(
-			new string[] {
-                Path.Combine(EngineDirectory,"Source/Runtime/D3D12RHI/Private"),
-                Path.Combine(EngineDirectory,"Source/Runtime/D3D12RHI/Public/Windows"),
-                Path.Combine(EngineDirectory,"Source/Runtime/VulkanRHI/Private"),
-                Path.Combine(EngineDirectory,"Source/Runtime/VulkanRHI/Public"),
-            }
-			);
 			
 		
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				// ... add other public dependencies that you statically link with here ...
+				"D3D12RHI",
+				"VulkanRHI"
 			}
 			);
 			
@@ -60,18 +51,17 @@ public class IGI : ModuleRules
                 "Engine",
                 "Projects",
 				"RHI",
-				"D3D12RHI",
-				"VulkanRHI"
             }
 			);
 		
 		
-		DynamicallyLoadedModuleNames.AddRange(
-			new string[]
-			{
-                // ... add any modules that your module loads dynamically here ...
-            }
-        );
+		if (!bUsePrecompiled || Target.LinkType == TargetLinkType.Monolithic)
+		{
+			PublicDependencyModuleNames.AddRange(new string[] {
+				"DX12",
+				"Vulkan"
+			});
+		}
 
         PublicDefinitions.Add("AIM_CORE_BINARY_NAME=TEXT(\"nvigi.core.framework.dll\")");
 
@@ -92,8 +82,5 @@ public class IGI : ModuleRules
 
         RuntimeDependencies.Add(Path.Combine(GPTModelPath, "nemotron-4-mini-4b-instruct_q4_0.gguf"));
         RuntimeDependencies.Add(Path.Combine(GPTModelPath, "nvigi.model.config.json"));
-
-        AddEngineThirdPartyPrivateStaticDependencies(Target, "DX12");
-        AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
     }
 }

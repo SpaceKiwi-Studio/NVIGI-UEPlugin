@@ -16,7 +16,7 @@
 
 namespace
 {
-    constexpr const char* const GGUF_MODEL_MINITRON{ "{8E31808B-C182-4016-9ED8-64804FF5B40D}" };
+    constexpr const char* const GGUF_MODEL_MINITRON{ "{01F43B70-CE23-42CA-9606-74E80C5ED0B6}" };
 
     constexpr std::size_t VRAM_BUDGET_RECOMMENDATION{ 1024 * 12 };
     constexpr std::size_t THREAD_NUM_RECOMMENDATION{ 1 }; // Recommended number of threads for CiG
@@ -46,19 +46,28 @@ public:
         {
             UE_LOG(LogIGISDK, Error, TEXT("Unable to chain common parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
             GPTInstance = nullptr;
+            return;
         }
         
         if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
         {
-            nvigi::D3D12Parameters d3d12Params{};
-            IGIModule->GetD3D12Parameters(d3d12Params, Result);
-            Result = params.chain(d3d12Params);
+            Result = params.chain(IGIModulePtr->GetD3D12Parameters());
+            if (Result != nvigi::kResultOk)
+            {
+                UE_LOG(LogIGISDK, Error, TEXT("Unable to chain D3D12 parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
+                GPTInstance = nullptr;
+                return;
+            }
         }
-        else if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
+        else if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::Vulkan)
         {
-            nvigi::VulkanParameters vulkanParams{};
-            IGIModule->GetVulkanParameters(vulkanParams, Result);
-            Result = params.chain(vulkanParams);
+            Result = params.chain(IGIModulePtr->GetVulkanParameters());
+            if (Result != nvigi::kResultOk)
+            {
+                UE_LOG(LogIGISDK, Error, TEXT("Unable to chain Vulkan parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
+                GPTInstance = nullptr;
+                return;
+            }
         }
 
         Result = GPTInterface->createInstance(params, &GPTInstance);
@@ -66,6 +75,7 @@ public:
         {
             UE_LOG(LogIGISDK, Fatal, TEXT("Unable to create gpt.ggml.cuda instance: %s"), *GetIGIStatusString(Result));
             GPTInstance = nullptr;
+            return;
         }
     }
 

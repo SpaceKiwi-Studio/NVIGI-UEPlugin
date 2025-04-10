@@ -37,10 +37,10 @@ public:
     nvigi::Result UnloadIGIFeature(const nvigi::PluginID& Feature, nvigi::InferenceInterface* Interface);
 
     /** Get the D3D12 parameters */
-    bool GetD3D12Parameters(nvigi::D3D12Parameters& Parameters, nvigi::Result Result) const;
+    nvigi::D3D12Parameters GetD3D12Parameters() const;
 
     /** Get the Vulkan parameters */
-    bool GetVulkanParameters(nvigi::VulkanParameters& Parameters, nvigi::Result Result) const;
+    nvigi::VulkanParameters GetVulkanParameters() const;
 
     const FString GetModelsPath() const;
 

@@ -77,80 +77,74 @@ public:
     }
 
     // Get the D3D12 parameters
-    bool GetD3D12Parameters(nvigi::D3D12Parameters& Parameters, nvigi::Result Result) const
+    nvigi::D3D12Parameters GetD3D12Parameters() const
     {
-        if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
+        nvigi::D3D12Parameters Parameters;
+        
+        if (!GDynamicRHI && GDynamicRHI->GetInterfaceType() != ERHIInterfaceType::D3D12)
         {
-            UE_LOG(LogIGISDK, Log, TEXT("UE not using D3D12; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
+            UE_LOG(LogIGISDK, Log, TEXT("UE not using D3D12; cannot use CiG"));
+            return {};
         }
 
         ID3D12DynamicRHI* RHI = static_cast<ID3D12DynamicRHI*>(GDynamicRHI);
 
         if (!RHI)
         {
-            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG"));
+            return {};
         }
+        UE_LOG(LogIGISDK, Log, TEXT("RHI Vulkan parameters: %s"), RHI->GetName());
 
         ID3D12CommandQueue* CmdQ = RHI->RHIGetCommandQueue();
         constexpr uint32 RHI_DEVICE_INDEX = 0u;
         ID3D12Device* D3D12Device = RHI->RHIGetDevice(RHI_DEVICE_INDEX);
 
-        if (!CmdQ && !D3D12Device)
+        if (!CmdQ || !D3D12Device)
         {
-            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve D3D12 device and command queue from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve D3D12 device and command queue from UE; cannot use CiG"));
+            return {};
         }
 
         Parameters.device = D3D12Device;
         Parameters.queue = CmdQ;
 
-        if (Result != nvigi::kResultOk)
-        {
-            UE_LOG(LogIGISDK, Error, TEXT("Unable to chain D3D12 parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
-        }
-
-        return true;
+        return Parameters;
     }
 
     // Get the Vulkan parameters
-    bool GetVulkanParameters(nvigi::VulkanParameters& Parameters, nvigi::Result Result) const
+    nvigi::VulkanParameters GetVulkanParameters() const
     {
-        if (GDynamicRHI && GDynamicRHI->GetInterfaceType() == ERHIInterfaceType::D3D12)
+        nvigi::VulkanParameters Parameters;
+        
+        if (!GDynamicRHI && GDynamicRHI->GetInterfaceType() != ERHIInterfaceType::Vulkan)
         {
-            UE_LOG(LogIGISDK, Log, TEXT("UE not using VULKAN; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
+            UE_LOG(LogIGISDK, Log, TEXT("UE not using VULKAN; cannot use CiG"));
+            return {};
         }
 
         IVulkanDynamicRHI* RHI = static_cast<IVulkanDynamicRHI*>(GDynamicRHI);
 
         if (!RHI)
         {
-            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG"));
+            return {};
         }
+        UE_LOG(LogIGISDK, Log, TEXT("RHI Vulkan parameters: %s"), RHI->GetName());
 
         VkQueue VkQ = RHI->RHIGetGraphicsVkQueue();
         VkDevice VkDevice = RHI->RHIGetVkDevice();
 
-        if (!VkQ && !VkDevice)
+        if (!VkQ || !VkDevice)
         {
-            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve VULKAN device and command queue from UE; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
+            UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve VULKAN device and command queue from UE; cannot use CiG"));
+            return {};
         }
 
         Parameters.device = VkDevice;
         Parameters.queue = VkQ;
 
-        if (Result != nvigi::kResultOk)
-        {
-            UE_LOG(LogIGISDK, Error, TEXT("Unable to chain VULKAN parameters; cannot use CiG: %s"), *GetIGIStatusString(Result));
-            return false;
-        }
-
-        return true;
+        return Parameters;
     }
 
     const FString GetModelsPath() const { return IGIModelsPath; }
@@ -246,14 +240,14 @@ nvigi::Result FIGIModule::UnloadIGIFeature(const nvigi::PluginID& Feature, nvigi
     return Result;
 }
 
-bool FIGIModule::GetD3D12Parameters(nvigi::D3D12Parameters& Parameters, nvigi::Result Result) const
+nvigi::D3D12Parameters FIGIModule::GetD3D12Parameters() const
 {
-    return Pimpl->GetD3D12Parameters(Parameters, Result);
+    return Pimpl->GetD3D12Parameters();
 }
 
-bool FIGIModule::GetVulkanParameters(nvigi::VulkanParameters& Parameters, nvigi::Result Result) const
+nvigi::VulkanParameters FIGIModule::GetVulkanParameters() const
 {
-    return Pimpl->GetVulkanParameters(Parameters, Result);
+    return Pimpl->GetVulkanParameters();
 }
 
 const FString FIGIModule::GetModelsPath() const
