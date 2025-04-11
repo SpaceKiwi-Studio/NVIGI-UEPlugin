@@ -71,6 +71,27 @@ FIGICore::FIGICore(FString IGICoreLibraryPath)
     Pref.logMessageCallback = IGILogCallback;
 
     nvigi::Result InitResult = (*Ptr_nvigiInit)(Pref, &IGIRequirements, nvigi::kSDKVersion);
+
+    // Find HW Adapter
+    uint32_t HWAdapter = 0;
+    for (int i = 0; i < IGIRequirements->numDetectedAdapters; i++)
+    {
+        const auto& Adapter = IGIRequirements->detectedAdapters[i];
+        if (IsPhysicalVendor(Adapter) && HWAdapter < Adapter->architecture)
+        {
+            UE_LOG(LogIGISDK, Log, TEXT("IGI: Found adapter %d: vendor: 0x%X ; architecture: %u"), i, Adapter->vendor, Adapter->architecture);
+            HWAdapter = Adapter->architecture;
+            AdapterId = i;
+        }
+    }
+
+    if (AdapterId < 0)
+    {
+        UE_LOG(LogIGISDK, Warning, TEXT("No hardware adapters found.  GPU plugins will not be available"));
+        if (IGIRequirements->numDetectedAdapters)
+            AdapterId = 0;
+    }
+    
     UE_LOG(LogIGISDK, Log, TEXT("IGI: Init result: %u"), InitResult);
 
     bInitialized = true;
@@ -109,4 +130,47 @@ nvigi::Result FIGICore::UnloadInterface(const nvigi::PluginID& Feature, nvigi::I
     UE_LOG(LogIGISDK, Log, TEXT("IGI: UnloadInterface result: %u"), Result);
 
     return Result;
+}
+
+nvigi::Result FIGICore::CheckPluginCompatibility(const nvigi::PluginID& Feature, const FString& Name)
+{
+    const nvigi::AdapterSpec* AdapterInfo = (AdapterId >= 0) ? IGIRequirements->detectedAdapters[AdapterId] : nullptr;
+
+    for (int i = 0; i < IGIRequirements->numDetectedPlugins; ++i)
+    {
+        const auto& Plugin = IGIRequirements->detectedPlugins[i];
+        
+        if (Plugin->id == Feature)
+        {
+            if (Plugin->requiredAdapterVendor != nvigi::VendorId::eAny && Plugin->requiredAdapterVendor != nvigi::VendorId::eNone && 
+                (!AdapterInfo || Plugin->requiredAdapterVendor != AdapterInfo->vendor))
+            {
+                UE_LOG(LogIGISDK, Warning, TEXT("Plugin %s could not be loaded on adapters from this GPU vendor (found %0x, requires %0x)"), *Name,
+                    AdapterInfo->vendor, Plugin->requiredAdapterVendor);
+                return nvigi::kResultInvalidState;
+            }
+
+            if (Plugin->requiredAdapterVendor == nvigi::VendorId::eNVDA && Plugin->requiredAdapterArchitecture > AdapterInfo->architecture)
+            {
+                UE_LOG(LogIGISDK, Warning, TEXT("Plugin %s could not be loaded on this GPU architecture (found %d, requires %d)"), *Name,
+                    AdapterInfo->architecture, Plugin->requiredAdapterArchitecture);
+                return nvigi::kResultNoSupportedHardwareFound;
+            }
+
+            if (Plugin->requiredAdapterVendor == nvigi::VendorId::eNVDA && Plugin->requiredAdapterDriverVersion > AdapterInfo->driverVersion)
+            {
+                UE_LOG(LogIGISDK, Warning, TEXT("Plugin %s could not be loaded on this driver (found %d.%d, requires %d.%d)"), *Name,
+                    AdapterInfo->driverVersion.major, AdapterInfo->driverVersion.minor,
+                    Plugin->requiredAdapterDriverVersion.major, Plugin->requiredAdapterDriverVersion.minor);
+                return nvigi::kResultDriverOutOfDate;
+            }
+
+            return nvigi::kResultOk;
+        }
+    }
+    
+    // Not found
+    UE_LOG(LogIGISDK, Warning, TEXT("Plugin %s could not be loaded"), *Name);
+
+    return nvigi::kResultNoPluginsFound;
 }

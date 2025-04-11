@@ -4,21 +4,18 @@
 
 #include "IGIGPT.h"
 
-#include "CoreMinimal.h"
 #include "IGIPlatformRHI.h"
 #include "IGIMinimal.h"
 
 #include "nvigi_gpt.h"
 
 #include <condition_variable>
-#include <thread>
 #include <mutex>
 
 namespace
 {
     constexpr const char* const GGUF_MODEL_MINITRON{ "{01F43B70-CE23-42CA-9606-74E80C5ED0B6}" };
-
-    constexpr std::size_t VRAM_BUDGET_RECOMMENDATION{ 1024 * 12 };
+    constexpr std::size_t VRAM_BUDGET_RECOMMENDATION{ 1024 * 8 };
     constexpr std::size_t THREAD_NUM_RECOMMENDATION{ 1 }; // Recommended number of threads for CiG
     constexpr std::size_t CONTEXT_SIZE_RECOMMENDATION{ 4096 };
 }
@@ -26,10 +23,9 @@ namespace
 class FIGIGPT::Impl
 {
 public:
-    Impl(FIGIModule* IGIModule)
-        : IGIModulePtr(IGIModule)
+    Impl(FIGIModule* IGIModule) : IGIModulePtr(IGIModule)
     {
-        nvigi::Result Result = nvigi::kResultOk;
+        nvigi::Result Result = IGIModulePtr->CheckPluginCompatibility(nvigi::plugin::gpt::ggml::cuda::kId, "ggml.cuda");
 
         IGIModulePtr->LoadIGIFeature(nvigi::plugin::gpt::ggml::cuda::kId, &GPTInterface, nullptr);
 

@@ -76,6 +76,11 @@ public:
         return Core->UnloadInterface(Feature, Interface);
     }
 
+    nvigi::Result CheckPluginCompatibility(const nvigi::PluginID& Feature, const FString& Name) const
+    {
+        return Core->CheckPluginCompatibility(Feature, Name);
+    }
+
     // Get the D3D12 parameters
     nvigi::D3D12Parameters GetD3D12Parameters() const
     {
@@ -94,7 +99,7 @@ public:
             UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG"));
             return {};
         }
-        UE_LOG(LogIGISDK, Log, TEXT("RHI Vulkan parameters: %s"), RHI->GetName());
+        UE_LOG(LogIGISDK, Log, TEXT("RHI parameters: %s"), RHI->GetName());
 
         ID3D12CommandQueue* CmdQ = RHI->RHIGetCommandQueue();
         constexpr uint32 RHI_DEVICE_INDEX = 0u;
@@ -130,7 +135,7 @@ public:
             UE_LOG(LogIGISDK, Error, TEXT("Unable to retrieve RHI instance from UE; cannot use CiG"));
             return {};
         }
-        UE_LOG(LogIGISDK, Log, TEXT("RHI Vulkan parameters: %s"), RHI->GetName());
+        UE_LOG(LogIGISDK, Log, TEXT("RHI parameters: %s"), RHI->GetName());
 
         VkQueue VkQ = RHI->RHIGetGraphicsVkQueue();
         VkDevice VkDevice = RHI->RHIGetVkDevice();
@@ -238,6 +243,11 @@ nvigi::Result FIGIModule::UnloadIGIFeature(const nvigi::PluginID& Feature, nvigi
         UE_LOG(LogIGISDK, Fatal, TEXT("ERROR when unloading IGI feature"));
     }
     return Result;
+}
+
+nvigi::Result FIGIModule::CheckPluginCompatibility(const nvigi::PluginID& Feature, const FString& Name)
+{
+    return Pimpl->CheckPluginCompatibility(Feature, Name);
 }
 
 nvigi::D3D12Parameters FIGIModule::GetD3D12Parameters() const

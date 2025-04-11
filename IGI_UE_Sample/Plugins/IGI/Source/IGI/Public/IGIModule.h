@@ -35,6 +35,7 @@ public:
 
     nvigi::Result LoadIGIFeature(const nvigi::PluginID& Feature, nvigi::InferenceInterface** Interface, const UTF8CHAR* UTF8PathToPlugin = nullptr);
     nvigi::Result UnloadIGIFeature(const nvigi::PluginID& Feature, nvigi::InferenceInterface* Interface);
+    nvigi::Result CheckPluginCompatibility(const nvigi::PluginID& Feature, const FString& Name);
 
     /** Get the D3D12 parameters */
     nvigi::D3D12Parameters GetD3D12Parameters() const;
